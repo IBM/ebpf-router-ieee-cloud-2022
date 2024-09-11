@@ -1,0 +1,32 @@
+################################################
+# Copyright 2022- IBM Inc. All rights reserved
+# SPDX-License-Identifier: Apache-2.0
+################################################
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: memslap-driver
+spec:
+  template:
+    spec:
+      containers:
+        - name: driver
+          image: sunyanan/memslap
+          imagePullPolicy: IfNotPresent
+          env:
+          - name: period
+            value: 5s
+          - name: duration
+            value: 60s
+          - name: concurrency
+            value: "8"
+          command: ["/bin/bash", "-c"]
+          args:
+            - memaslap -s memcached-0.memcached.default.svc.cluster.local:11211 -S ${period} -t ${duration} --concurrency=${concurrency}
+      nodeSelector:
+        role: master
+      imagePullSecrets:
+        - name: res-cpe-team-docker-local
+      restartPolicy: Never
+  backoffLimit: 4

@@ -1,0 +1,41 @@
+################################################
+# Copyright 2022- IBM Inc. All rights reserved
+# SPDX-License-Identifier: Apache-2.0
+################################################
+
+apiVersion: kubeflow.org/v1alpha2
+kind: MPIJob
+metadata:
+  name: osu-benchmark
+spec:
+  slotsPerWorker: 1
+  cleanPodPolicy: Running
+  mpiReplicaSpecs:
+    Launcher:
+      replicas: 1
+      template:
+         spec:
+           containers:
+           - image: sunyanan/osubenchmark:5.6.3
+             name: mpi-bench-master
+             command:
+             - mpirun
+             - --allow-run-as-root
+             - -np
+             - "3"
+             - /osu-micro-benchmarks-5.6.3/mpi/collective/osu_alltoall
+             - -m
+             - "16777216"
+           nodeSelector:
+             role: master
+           imagePullSecrets:
+           - name: res-cpe-team-docker-local
+    Worker:
+      replicas: 3
+      template:
+        spec:
+          containers:
+          - image: sunyanan/osubenchmark:5.6.3
+            name: mpi-bench-worker
+          imagePullSecrets:
+          - name: res-cpe-team-docker-local

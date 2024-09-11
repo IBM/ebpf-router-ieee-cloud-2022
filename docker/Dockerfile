@@ -1,0 +1,36 @@
+################################################
+# Copyright 2022- IBM Inc. All rights reserved
+# SPDX-License-Identifier: Apache-2.0
+################################################
+
+FROM ubuntu:18.04
+
+RUN apt-get update --fix-missing && apt-get install -y locales \
+    && localedef -i en_US -c -f UTF-8 -A /usr/share/locale/locale.alias en_US.UTF-8
+ENV LANG en_US.utf8
+
+# !! NEED TO SET OVERLAY_CIRD IN DEPLOYMENT
+
+# workdir
+RUN mkdir -p /usr/app/ebpf-router
+WORKDIR /usr/app/ebpf-router
+
+# copy files
+COPY ptrace_do /usr/app/ebpf-router/ptrace_do
+COPY forward_fd.cpp /usr/app/ebpf-router/forward_fd.cpp
+COPY Makefile /usr/app/ebpf-router/Makefile
+
+RUN apt-get update --fix-missing
+RUN apt-get install -y gcc make build-essential jq ca-certificates tar && rm /var/lib/apt/lists/* -rf
+RUN make all && rm -r /usr/app/ebpf-router/ptrace_do
+
+RUN echo "deb [trusted=yes] https://repo.iovisor.org/apt/xenial xenial-nightly main" | tee /etc/apt/sources.list.d/iovisor.list
+RUN apt-get update --fix-missing
+RUN apt-get install -y bcc-tools
+
+COPY router.tar /usr/app/ebpf-router/router.tar
+RUN tar xvf router.tar && rm router.tar
+
+ENV ROUTER_TOP_FOLDER /usr/app/ebpf-router
+ENTRYPOINT [ "/bin/bash", "-c" ]
+CMD ["./forwarder > forwarder.log & ./dist/router/router"]

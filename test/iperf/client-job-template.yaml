@@ -1,0 +1,32 @@
+################################################
+# Copyright 2022- IBM Inc. All rights reserved
+# SPDX-License-Identifier: Apache-2.0
+################################################
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: iperfclientf1
+spec:
+  template:
+    spec:
+      containers:
+        - name: iperfclientf1
+          image: sunyanan/iperf3ping
+          imagePullPolicy: IfNotPresent
+          tty: true
+          stdin: true
+          imagePullPolicy: Always
+          command: ["/bin/bash", "-c"]
+          env:
+            - name: TIME
+              value: "10"
+          args:
+            - echo "timestamp,bps_sent,bps_rcvd,retrans" &&
+              for i in {1..10}; do cp /dev/null /tmp/iperf.json; iperf3 -c SERVER_IP -t ${TIME} -i 0 -J --logfile /tmp/iperf.json; echo $(date "+%Y%m%d-%H%M"),$(jq .end.sum_sent.bits_per_second /tmp/iperf.json),$(jq .end.sum_received.bits_per_second /tmp/iperf.json),$(jq .end.sum_sent.retransmits /tmp/iperf.json); done
+      nodeSelector:
+        role: worker
+      imagePullSecrets:
+        - name: res-cpe-team-docker-local
+      restartPolicy: Never
+  backoffLimit: 4

@@ -1,0 +1,111 @@
+################################################
+# Copyright 2022- IBM Inc. All rights reserved
+# SPDX-License-Identifier: Apache-2.0
+################################################
+
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: ebpf-router
+  namespace: kube-system
+  labels:
+    k8s-app: ebpf-router
+spec:
+  selector:
+    matchLabels:
+      name: ebpf-router
+  template:
+    metadata:
+      labels:
+        name: ebpf-router
+    spec:
+      hostNetwork: true
+      hostIPC: true
+      hostPID: true
+      containers:
+      - name: router
+        securityContext:
+          privileged: true
+          runAsUser: 0
+        env:
+        - name: OVERLAY_IF
+          value: "vxlan.calico"
+        - name: HOST_IF
+          value: "ens3"
+        - name: ROUTER_LOGLEVEL
+          value: "DEBUG"
+        image: ghcr.io/ibm/ebpf-router/router:v0.0.1
+        resources:
+          limits:
+            memory: 800Mi
+          requests:
+            cpu: 100m
+            memory: 700Mi
+        volumeMounts:
+        - mountPath: /etc/crictl.yaml
+          name: crictl
+          readOnly: true
+        - mountPath: /var/run
+          name: varrun
+        - mountPath: /run
+          name: run
+        - mountPath: /lib/modules
+          name: lib
+          readOnly: true
+        - mountPath: /sys
+          name: sys
+          readOnly: true
+        - mountPath: /usr/src
+          name: src
+          readOnly: true
+        - mountPath: /tmp
+          name: tmp
+        - mountPath: /proc
+          name: proc
+          readOnly: true
+        - mountPath: /usr/local/bin/crictl
+          name: crictlbin
+          readOnly: true
+      volumes:
+      # for container runtime call
+      - name: crictl
+        hostPath:
+          path: /etc/crictl.yaml
+          type: FileOrCreate
+      - name: varrun 
+        hostPath:
+          path: /var/run
+          type: DirectoryOrCreate
+      - name: run
+        hostPath:
+          path: /run
+          type: DirectoryOrCreate
+      - name: crictlbin
+        hostPath:
+          path: /usr/local/bin/crictl
+          type: FileOrCreate
+      # for headers and to read info in /sys 
+      - name: lib
+        hostPath:
+          path: /lib/modules
+          type: DirectoryOrCreate
+      - name: sys
+        hostPath:
+          path: /sys
+          type: DirectoryOrCreate
+      - name: src
+        hostPath:
+          path: /usr/src
+          type: DirectoryOrCreate
+      # for router app
+      - name: tmp
+        hostPath:
+          path: /tmp
+          type: DirectoryOrCreate
+      - name: proc
+        hostPath:
+          path: /proc
+          type: DirectoryOrCreate
+      imagePullSecrets:
+      - name: res-cpe-team-docker-local
+      terminationGracePeriodSeconds: 30
